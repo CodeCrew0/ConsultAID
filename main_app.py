@@ -10,11 +10,11 @@ from datetime import datetime
 import sqlite3
 
 # Import custom modules
-from modules.data_processor import DataProcessor
-from modules.sentiment_analyzer import SentimentAnalyzer
-from modules.text_summarizer import TextSummarizer
-from modules.keyword_extractor import KeywordExtractor
-from modules.visualization import VisualizationGenerator
+from .modules.data_processor import DataProcessor
+from .modules.sentiment_analyzer import SentimentAnalyzer
+from .modules.text_summarizer import TextSummarizer
+from .modules.keyword_extractor import KeywordExtractor
+from .modules.visualization import VisualizationGenerator
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
