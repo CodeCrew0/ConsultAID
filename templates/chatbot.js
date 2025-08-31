@@ -1,10 +1,57 @@
 // chatbot.js
 
 (function() {
-    // --- CONFIGURATION ---
+    // --- IMPORTANT CONFIGURATION ---
     const API_BASE_URL = 'http://127.0.0.1:5001';
 
-    // Get references to the UI elements
+    // Step 1: Define the complete HTML and CSS for the chatbot UI as a string.
+    const chatbotUiHtml = `
+    <div id="faq-bot-container">
+        <style>
+            #faq-bot-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+            #faq-bot-container * { box-sizing: border-box; }
+            #faq-bot-toggle-button { background-color: #007bff; color: white; width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s ease, background-color 0.2s ease; display: flex; justify-content: center; align-items: center; }
+            #faq-bot-toggle-button:hover { transform: scale(1.1); background-color: #0056b3; }
+            #faq-bot-container .chat-widget { width: 370px; max-height: 70vh; background: white; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; position: absolute; bottom: 80px; right: 0; opacity: 0; transform: translateY(20px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; }
+            #faq-bot-container.open .chat-widget { opacity: 1; transform: translateY(0); pointer-events: auto; }
+            #faq-bot-container.open #faq-bot-toggle-button { transform: rotate(180deg); }
+            #faq-bot-container .header { background: #007bff; color: white; padding: 15px; text-align: center; font-weight: bold; }
+            #faq-bot-container #chat-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; background-color: #f7f8fc; }
+            #faq-bot-container .message { max-width: 85%; padding: 10px 15px; border-radius: 18px; margin-bottom: 10px; line-height: 1.4; word-wrap: break-word; }
+            #faq-bot-container .user-message { background-color: #007bff; color: white; align-self: flex-end; }
+            #faq-bot-container .bot-message { background-color: #e9e9eb; color: #333; align-self: flex-start; }
+            #faq-bot-container .bot-message ul, #faq-bot-container .bot-message ol { padding-left: 20px; margin: 5px 0; }
+            #faq-bot-container .bot-message .faq-list { list-style: none; padding: 0; cursor: pointer; }
+            #faq-bot-container .bot-message .faq-list li { background-color: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-top: 5px; transition: background-color 0.2s; }
+            #faq-bot-container .bot-message .faq-list li:hover { background-color: #f1f1f1; }
+            #faq-bot-container #form-container { display: flex; padding: 10px; border-top: 1px solid #eee; background: #fff; }
+            #faq-bot-container #query-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; margin-right: 10px; font-size: 1em; }
+            #faq-bot-container #query-input:focus { outline: none; border-color: #007bff; }
+            #faq-bot-container #submit-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #007bff; }
+        </style>
+        
+        <div class="chat-widget">
+            <div class="header">FAQ Assistant</div>
+            <div id="chat-container"></div>
+            <form id="chat-form" style="display: flex; width: 100%;">
+                <div id="form-container">
+                    <input type="text" id="query-input" placeholder="Ask a question..." autocomplete="off" required>
+                    <button id="submit-btn" type="submit" aria-label="Send">➡️</button>
+                </div>
+            </form>
+        </div>
+
+        <button id="faq-bot-toggle-button" aria-label="Toggle Chat">
+            <span class="icon-open">?</span>
+            <span class="icon-close" style="display:none;">X</span>
+        </button>
+    </div>
+    `;
+
+    // Step 2: Inject the UI into the host page's body.
+    document.body.insertAdjacentHTML('beforeend', chatbotUiHtml);
+
+    // Step 3: Now that the HTML is on the page, get references to all the necessary elements.
     const container = document.getElementById('faq-bot-container');
     const toggleButton = document.getElementById('faq-bot-toggle-button');
     const chatForm = document.getElementById('chat-form');
@@ -35,7 +82,6 @@
     `;
     
     // --- CORE FUNCTIONS ---
-    
     function getOrCreateSessionId() {
         let storedId = localStorage.getItem('faq_bot_session_id');
         if (!storedId) {
@@ -60,14 +106,11 @@
     
     async function submitQuery(query) {
         if (!query) return;
-
-        // NEW: If not initialized, queue the message and do nothing else.
         if (!isInitialized) {
             addMessage(query, 'user');
             messageQueue.push(query);
             return;
         }
-
         addMessage(query, 'user');
         try {
             const response = await fetch(`${API_BASE_URL}/api/ask`, {
@@ -86,32 +129,22 @@
     
     async function initializeSession() {
         try {
-            // Show your quirky loading message immediately.
             addMessage("Establishing connection to the unknown...", 'bot');
-
-            // Call the new initialization endpoint.
             const response = await fetch(`${API_BASE_URL}/api/init`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ session_id: session_id })
             });
-
             if (!response.ok) throw new Error('Initialization failed on the server.');
-
-            // --- Initialization Successful ---
             isInitialized = true;
             sessionStorage.setItem('faq_bot_initialized', 'true');
-            
-            // Clear the loading message and show the real welcome message.
             chatContainer.innerHTML = '';
             addMessage(welcomeMessage, 'bot');
-            
-            // Process any messages that the user typed while we were loading.
             if (messageQueue.length > 0) {
                 for (const query of messageQueue) {
                     await submitQuery(query);
                 }
-                messageQueue = []; // Clear the queue
+                messageQueue = [];
             }
         } catch (error) {
             console.error("Initialization error:", error);
@@ -123,15 +156,12 @@
     function restoreSession() {
         const savedHtml = sessionStorage.getItem('faq_bot_chat_html');
         const isOpen = sessionStorage.getItem('faq_bot_is_open') === 'true';
-
         if (savedHtml) {
             chatContainer.innerHTML = savedHtml;
             chatContainer.scrollTop = chatContainer.scrollHeight;
         } else {
-            // This should not happen if initialized, but it's a good fallback.
             addMessage(welcomeMessage, 'bot');
         }
-
         if (isOpen) {
             container.classList.add('open');
             iconOpen.style.display = 'none';
@@ -140,7 +170,6 @@
     }
 
     // --- EVENT LISTENERS ---
-    
     toggleButton.addEventListener('click', () => {
         container.classList.toggle('open');
         const isOpen = container.classList.contains('open');
@@ -164,13 +193,10 @@
     });
 
     // --- INITIALIZATION LOGIC ---
-    
-    // Check if this tab has already been initialized to support cross-page persistence.
     if (sessionStorage.getItem('faq_bot_initialized') === 'true') {
         isInitialized = true;
         restoreSession();
     } else {
-        // If it's a new tab, start the initialization process.
         initializeSession();
     }
 })();
