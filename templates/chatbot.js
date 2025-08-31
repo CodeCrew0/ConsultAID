@@ -1,9 +1,6 @@
 // chatbot.js
 
 (function() {
-    // --- IMPORTANT CONFIGURATION ---
-    const API_BASE_URL = 'http://127.0.0.1:5001';
-
     // Step 1: Define the complete HTML and CSS for the chatbot UI as a string.
     const chatbotUiHtml = `
     <div id="faq-bot-container">
@@ -51,152 +48,156 @@
     // Step 2: Inject the UI into the host page's body.
     document.body.insertAdjacentHTML('beforeend', chatbotUiHtml);
 
-    // Step 3: Now that the HTML is on the page, get references to all the necessary elements.
-    const container = document.getElementById('faq-bot-container');
-    const toggleButton = document.getElementById('faq-bot-toggle-button');
-    const chatForm = document.getElementById('chat-form');
-    const queryInput = document.getElementById('query-input');
-    const chatContainer = document.getElementById('chat-container');
-    const iconOpen = toggleButton.querySelector('.icon-open');
-    const iconClose = toggleButton.querySelector('.icon-close');
-    
-    // --- STATE MANAGEMENT ---
-    let session_id = getOrCreateSessionId();
-    let isInitialized = false;
-    let messageQueue = [];
+    // Step 3: Define the main chatbot logic in a function.
+    // This function will only be called AFTER the 'marked' library is loaded.
+    function initializeChatbot() {
+        const API_BASE_URL = 'http://127.0.0.1:5001';
+        
+        const container = document.getElementById('faq-bot-container');
+        const toggleButton = document.getElementById('faq-bot-toggle-button');
+        const chatForm = document.getElementById('chat-form');
+        const queryInput = document.getElementById('query-input');
+        const chatContainer = document.getElementById('chat-container');
+        const iconOpen = toggleButton.querySelector('.icon-open');
+        const iconClose = toggleButton.querySelector('.icon-close');
+        
+        let session_id = getOrCreateSessionId();
+        let isInitialized = false;
+        let messageQueue = [];
 
-    // Load 'marked' library for Markdown rendering
+        const welcomeMessage = `
+            Hello! How can I help you today? You can ask me anything or start with one of these common questions:
+            <ul class="faq-list">
+                <li>What is the main topic of the document?</li>
+                <li>Can you summarize the key points?</li>
+                <li>Who is the intended audience?</li>
+            </ul>
+        `;
+
+        function getOrCreateSessionId() {
+            let storedId = localStorage.getItem('faq_bot_session_id');
+            if (!storedId) {
+                storedId = 'sess_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('faq_bot_session_id', storedId);
+            }
+            return storedId;
+        }
+
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', `${sender}-message`);
+            // Now that 'marked' is guaranteed to be loaded, we can use it directly.
+            if (sender === 'bot') {
+                messageDiv.innerHTML = marked.parse(text);
+            } else {
+                messageDiv.textContent = text;
+            }
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            sessionStorage.setItem('faq_bot_chat_html', chatContainer.innerHTML);
+        }
+
+        async function submitQuery(query) {
+            if (!query) return;
+            if (!isInitialized) {
+                addMessage(query, 'user');
+                messageQueue.push(query);
+                return;
+            }
+            addMessage(query, 'user');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query, session_id: session_id })
+                });
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+                addMessage(data.response, 'bot');
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, an error occurred. The API might be offline.', 'bot');
+            }
+        }
+
+        async function initializeSession() {
+            try {
+                addMessage("Establishing connection to the unknown...", 'bot');
+                const response = await fetch(`${API_BASE_URL}/api/init`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: session_id })
+                });
+                if (!response.ok) throw new Error('Initialization failed on the server.');
+                isInitialized = true;
+                sessionStorage.setItem('faq_bot_initialized', 'true');
+                chatContainer.innerHTML = '';
+                addMessage(welcomeMessage, 'bot');
+                if (messageQueue.length > 0) {
+                    for (const query of messageQueue) {
+                        await submitQuery(query);
+                    }
+                    messageQueue = [];
+                }
+            } catch (error) {
+                console.error("Initialization error:", error);
+                chatContainer.innerHTML = '';
+                addMessage("Connection failed. Please refresh the page to try again.", 'bot');
+            }
+        }
+
+        function restoreSession() {
+            const savedHtml = sessionStorage.getItem('faq_bot_chat_html');
+            const isOpen = sessionStorage.getItem('faq_bot_is_open') === 'true';
+            if (savedHtml) {
+                chatContainer.innerHTML = savedHtml;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            } else {
+                addMessage(welcomeMessage, 'bot');
+            }
+            if (isOpen) {
+                container.classList.add('open');
+                iconOpen.style.display = 'none';
+                iconClose.style.display = 'block';
+            }
+        }
+
+        toggleButton.addEventListener('click', () => {
+            container.classList.toggle('open');
+            const isOpen = container.classList.contains('open');
+            iconOpen.style.display = isOpen ? 'none' : 'block';
+            iconClose.style.display = isOpen ? 'block' : 'none';
+            sessionStorage.setItem('faq_bot_is_open', isOpen);
+        });
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const query = queryInput.value.trim();
+            submitQuery(query);
+            queryInput.value = '';
+        });
+        chatContainer.addEventListener('click', (e) => {
+            if (e.target && e.target.nodeName === 'LI') {
+                const question = e.target.textContent;
+                submitQuery(question);
+            }
+        });
+
+        if (sessionStorage.getItem('faq_bot_initialized') === 'true') {
+            isInitialized = true;
+            restoreSession();
+        } else {
+            initializeSession();
+        }
+    }
+
+    // Step 4: Load the 'marked.js' library and run the chatbot logic only after it's loaded.
     if (typeof marked === 'undefined') {
         let script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        script.onload = initializeChatbot; // Run the main logic after the script has loaded.
         document.head.appendChild(script);
-    }
-    
-    const welcomeMessage = `
-        Hello! How can I help you today? You can ask me anything or start with one of these common questions:
-        <ul class="faq-list">
-            <li>What is the main topic of the document?</li>
-            <li>Can you summarize the key points?</li>
-            <li>Who is the intended audience?</li>
-        </ul>
-    `;
-    
-    // --- CORE FUNCTIONS ---
-    function getOrCreateSessionId() {
-        let storedId = localStorage.getItem('faq_bot_session_id');
-        if (!storedId) {
-            storedId = 'sess_' + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem('faq_bot_session_id', storedId);
-        }
-        return storedId;
-    }
-    
-    function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', `${sender}-message`);
-        if (sender === 'bot') {
-            messageDiv.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
-        } else {
-            messageDiv.textContent = text;
-        }
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        sessionStorage.setItem('faq_bot_chat_html', chatContainer.innerHTML);
-    }
-    
-    async function submitQuery(query) {
-        if (!query) return;
-        if (!isInitialized) {
-            addMessage(query, 'user');
-            messageQueue.push(query);
-            return;
-        }
-        addMessage(query, 'user');
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/ask`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: query, session_id: session_id })
-            });
-            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-            const data = await response.json();
-            addMessage(data.response, 'bot');
-        } catch (error) {
-            console.error('Error:', error);
-            addMessage('Sorry, an error occurred. The API might be offline.', 'bot');
-        }
-    }
-    
-    async function initializeSession() {
-        try {
-            addMessage("Establishing connection to the unknown...", 'bot');
-            const response = await fetch(`${API_BASE_URL}/api/init`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: session_id })
-            });
-            if (!response.ok) throw new Error('Initialization failed on the server.');
-            isInitialized = true;
-            sessionStorage.setItem('faq_bot_initialized', 'true');
-            chatContainer.innerHTML = '';
-            addMessage(welcomeMessage, 'bot');
-            if (messageQueue.length > 0) {
-                for (const query of messageQueue) {
-                    await submitQuery(query);
-                }
-                messageQueue = [];
-            }
-        } catch (error) {
-            console.error("Initialization error:", error);
-            chatContainer.innerHTML = '';
-            addMessage("Connection failed. Please refresh the page to try again.", 'bot');
-        }
-    }
-    
-    function restoreSession() {
-        const savedHtml = sessionStorage.getItem('faq_bot_chat_html');
-        const isOpen = sessionStorage.getItem('faq_bot_is_open') === 'true';
-        if (savedHtml) {
-            chatContainer.innerHTML = savedHtml;
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        } else {
-            addMessage(welcomeMessage, 'bot');
-        }
-        if (isOpen) {
-            container.classList.add('open');
-            iconOpen.style.display = 'none';
-            iconClose.style.display = 'block';
-        }
-    }
-
-    // --- EVENT LISTENERS ---
-    toggleButton.addEventListener('click', () => {
-        container.classList.toggle('open');
-        const isOpen = container.classList.contains('open');
-        iconOpen.style.display = isOpen ? 'none' : 'block';
-        iconClose.style.display = isOpen ? 'block' : 'none';
-        sessionStorage.setItem('faq_bot_is_open', isOpen);
-    });
-
-    chatForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const query = queryInput.value.trim();
-        submitQuery(query);
-        queryInput.value = '';
-    });
-
-    chatContainer.addEventListener('click', (e) => {
-        if (e.target && e.target.nodeName === 'LI') {
-            const question = e.target.textContent;
-            submitQuery(question);
-        }
-    });
-
-    // --- INITIALIZATION LOGIC ---
-    if (sessionStorage.getItem('faq_bot_initialized') === 'true') {
-        isInitialized = true;
-        restoreSession();
     } else {
-        initializeSession();
+        initializeChatbot(); // If it's already on the page for some reason, run immediately.
     }
+
 })();
