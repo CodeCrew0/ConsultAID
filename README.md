@@ -3,17 +3,17 @@
 ConsultAID is a sophisticated, modular, and multilingual chatbot powered by a Retrieval-Augmented Generation (RAG) architecture. It is designed to be a universal platform that can be easily adapted to any domain by providing it with a custom knowledge base. The current MVP is configured as a friendly and helpful student support assistant for a university.
 
 ## Appendix
-  * [Features](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#features)
-  * [Architecture Overview](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#architecture-overview)
-  * [Tech Stack](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#technology-stack)
-  * [Test Hardware](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#test-hardware)
-  * [Limitations](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#limitations)
-  * [Project Structure](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#project-structure)
-  * [Getting Started](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#getting-started)
-  * [Usage](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#usage)
-  * [Front-end Integration](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#front-end-integration-chatbotjs)
-  * [API Endpoints](https://github.com/CodeCrew0/ConsultAID/README.md#api-endpoints)
-  * [Customization](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#-customization)
+  * [Features](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#features)
+  * [Architecture Overview](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#architecture-overview)
+  * [Tech Stack](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#technology-stack)
+  * [Test Hardware](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#test-hardware)
+  * [Limitations](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#limitations)
+  * [Project Structure](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#project-structure)
+  * [Getting Started](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#getting-started)
+  * [Usage](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#usage)
+  * [Front-end Integration](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#front-end-integration-chatbotjs)
+  * [API Endpoints](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#api-endpoints)
+  * [Customization](https://github.com/CodeCrew0/ConsultAID/blob/main/README.md#-customization)
 
 ## Features
 
