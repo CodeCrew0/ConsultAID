@@ -24,7 +24,6 @@
                 transform: translateY(20px);
                 pointer-events: none;
                 transition: opacity 0.3s ease, transform 0.3s ease;
-                position: relative; 
             }
             #faq-bot-container.open .chat-widget { opacity: 1; transform: translateY(0); pointer-events: auto; }
             #faq-bot-container .header {
@@ -44,6 +43,8 @@
                 padding: 70px 20px 20px 20px;
                 overflow-y: auto;
                 background-color: #f7f8fc;
+                display: flex;
+                flex-direction: column;
             }
             #faq-bot-container .message { max-width: 85%; padding: 10px 15px; border-radius: 18px; margin-bottom: 10px; line-height: 1.4; word-wrap: break-word; }
             #faq-bot-container .user-message { background-color: #007bff; color: white; align-self: flex-end; }
@@ -53,34 +54,34 @@
                 padding: 10px;
                 border-top: 1px solid #eee;
                 background: #fff;
-                align-items: center;
+                align-items: flex-end;
             }
             
-            /* --- CSS FIX IS HERE --- */
             #faq-bot-container #query-input {
                 flex: 1;
                 border: 1px solid #ccc;
                 border-radius: 20px;
                 padding: 10px;
                 font-size: 1em;
-                font-family: inherit; /* Ensures textarea uses the same font */
+                font-family: inherit;
                 line-height: 1.4;
                 margin-right: 10px;
-                resize: none; /* Hides the manual resize handle */
-                overflow-y: hidden; /* Prevents scrollbar from flashing */
-                max-height: 100px; /* Limits the max growth height */
+                resize: none;
+                overflow-y: hidden;
+                max-height: 100px;
+                min-height: 40px;
                 width: 20vw;
             }
 
             #faq-bot-container #query-input:disabled { background-color: #f5f5f5; cursor: not-allowed; }
-            #faq-bot-container #submit-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #007bff; align-self: flex-end; padding-bottom: 5px; } /* Aligns button to bottom */
+            #faq-bot-container #submit-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #007bff; padding: 5px; min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
             #faq-bot-container #submit-btn:disabled { color: #aaa; cursor: not-allowed; }
         </style>
         
         <div class="chat-widget">
             <div class="header">FAQ Assistant</div>
             <div id="chat-container"></div>
-            <form id="chat-form" style="display: flex; width: 100%;">
+            <form id="chat-form">
                 <div id="form-container">
                     <textarea id="query-input" placeholder="Please wait..." required disabled rows="1"></textarea>
                     <button id="submit-btn" type="submit" aria-label="Send" disabled>➡️</button>
@@ -90,31 +91,48 @@
 
         <button id="faq-bot-toggle-button" aria-label="Toggle Chat">
             <span class="icon-open">?</span>
-            <span class="icon-close" style="display:none;">X</span>
+            <span class="icon-close" style="display:none;">✕</span>
         </button>
     </div>
     `;
+
+    // Prevent multiple initializations by checking if UI already exists
+    if (document.getElementById('faq-bot-container')) {
+        console.log('FAQ Bot UI already exists, skipping initialization...');
+        return;
+    }
 
     // Step 2: Inject the UI.
     document.body.insertAdjacentHTML('beforeend', chatbotUiHtml);
 
     // Step 3: Run the script.
     function initializeChatbot() {
-        const API_BASE_URL = 'http://127.0.0.1:5001';
+        const API_BASE_URL = 'https://77b493b6d5b1.ngrok-free.app'; //'http://127.0.0.1:5001';
         
         const container = document.getElementById('faq-bot-container');
         const toggleButton = document.getElementById('faq-bot-toggle-button');
         const chatForm = document.getElementById('chat-form');
-        const queryInput = document.getElementById('query-input'); // This now refers to the <textarea>
+        const queryInput = document.getElementById('query-input');
         const submitBtn = document.getElementById('submit-btn');
         const chatContainer = document.getElementById('chat-container');
         const iconOpen = toggleButton.querySelector('.icon-open');
         const iconClose = toggleButton.querySelector('.icon-close');
         
-        let session_id = localStorage.getItem('faq_bot_session_id') || 'sess_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('faq_bot_session_id', session_id);
+        // Generate or retrieve session ID with proper persistence
+        let session_id;
+        try {
+            session_id = localStorage.getItem('faq_bot_session_id');
+            if (!session_id) {
+                session_id = 'sess_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+                localStorage.setItem('faq_bot_session_id', session_id);
+            }
+        } catch (e) {
+            // Fallback if localStorage is not available
+            session_id = 'sess_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
         
-        const welcomeMessage = `Hello! How can I help you?
+        // let session_id;
+        let welcomeMessage = `Hello! How can I help you?
 You can try asking one of these suggestions:
 - What is the main topic?
 - Can you summarize the key points?`;
@@ -124,38 +142,92 @@ You can try asking one of these suggestions:
             messageDiv.classList.add('message', `${sender}-message`);
             messageDiv.textContent = text;
             chatContainer.appendChild(messageDiv);
-            setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 0);
-            sessionStorage.setItem('faq_bot_chat_html', chatContainer.innerHTML);
+            // Scroll to bottom
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+            
+            // Save chat state
+            try {
+                sessionStorage.setItem('faq_bot_chat_html', chatContainer.innerHTML);
+            } catch (e) {
+                console.log('Could not save chat state');
+            }
         }
 
         async function submitQuery(query) {
-            if (!query) return;
-            addMessage(query, 'user');
+            if (!query || query.trim() === '') return;
+            
+            const trimmedQuery = query.trim();
+            
+            // Disable form during request
+            disableForm();
+            
+            addMessage(trimmedQuery, 'user');
+            
+            // Show loading message
             const loadingMessage = document.createElement('div');
             loadingMessage.classList.add('message', 'bot-message');
             loadingMessage.textContent = "Thinking...";
+            loadingMessage.id = 'loading-message-' + Date.now(); // Unique ID
             chatContainer.appendChild(loadingMessage);
-            setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 0);
+            
+            // Scroll to bottom
+            requestAnimationFrame(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/ask`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query, session_id: session_id })
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        query: trimmedQuery, 
+                        session_id: session_id 
+                    })
                 });
-                chatContainer.removeChild(loadingMessage);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'API request failed');
-                }
-                const data = await response.json();
-                addMessage(data.response, 'bot');
-            } catch (error) {
-                console.error('Error:', error);
-                if(chatContainer.contains(loadingMessage)) {
+
+                // Remove loading message
+                if (chatContainer.contains(loadingMessage)) {
                     chatContainer.removeChild(loadingMessage);
                 }
-                addMessage(`Sorry, an error occurred: ${error.message}`, 'bot');
+
+                if (!response.ok) {
+                    let errorMessage = `Server error (${response.status})`;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                        console.error('Server error details:', errorData);
+                    } catch (e) {
+                        console.error('Could not parse error response:', e);
+                        errorMessage += ' - Could not parse server response';
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                const data = await response.json();
+                addMessage(data.response || 'No response received', 'bot');
+                
+            } catch (error) {
+                console.error('Error details:', error);
+                
+                // Remove loading message if it still exists
+                if (chatContainer.contains(loadingMessage)) {
+                    chatContainer.removeChild(loadingMessage);
+                }
+                
+                let errorMsg = `Sorry, an error occurred: ${error.message}`;
+                if (error.message.includes('Failed to fetch')) {
+                    errorMsg = 'Connection error: Cannot reach the server. Please check if the server is running on port 5001.';
+                }
+                
+                addMessage(errorMsg, 'bot');
+            } finally {
+                // Re-enable form
+                enableForm();
             }
         }
         
@@ -165,81 +237,179 @@ You can try asking one of these suggestions:
             queryInput.placeholder = "Ask a question...";
         }
 
+        function disableForm() {
+            queryInput.disabled = true;
+            submitBtn.disabled = true;
+            queryInput.placeholder = "Please wait...";
+        }
+
         async function initializeSession() {
+            // Check if session is already initialized
             try {
-                addMessage("Establishing connection to the unknown...", 'bot');
+                const isInitialized = sessionStorage.getItem('faq_bot_initialized');
+                if (isInitialized === 'true') {
+                    console.log('Session already initialized, restoring state...');
+                    restoreSession();
+                    return;
+                }
+            } catch (e) {
+                console.log('SessionStorage not available, proceeding with initialization');
+            }
+
+            try {
+                addMessage("Establishing connection...", 'bot');
+                disableForm();
+                
                 const response = await fetch(`${API_BASE_URL}/api/init`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ session_id: session_id })
                 });
-                if (!response.ok) throw new Error('Initialization failed on the server.');
-                sessionStorage.setItem('faq_bot_initialized', 'true');
+                
+                if (!response.ok) {
+                    throw new Error(`Initialization failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Use welcome message from server (potentially translated)
+                if (data.welcome_message) {
+                    welcomeMessage = data.welcome_message;
+                }
+                
+                // Mark as initialized
+                try {
+                    sessionStorage.setItem('faq_bot_initialized', 'true');
+                } catch (e) {
+                    console.log('Could not set sessionStorage');
+                }
+                
+                // Clear the container and show welcome message
                 chatContainer.innerHTML = '';
                 addMessage(welcomeMessage, 'bot');
-				enableForm();
+                enableForm();
+                
             } catch (error) {
                 console.error("Initialization error:", error);
                 chatContainer.innerHTML = '';
                 addMessage("Connection failed. Please refresh the page to try again.", 'bot');
+                disableForm();
             }
         }
 
         function restoreSession() {
-            const savedHtml = sessionStorage.getItem('faq_bot_chat_html');
-            const isOpen = sessionStorage.getItem('faq_bot_is_open') === 'true';
-            if (savedHtml) {
-                chatContainer.innerHTML = savedHtml;
-                setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 0);
+            try {
+                const savedHtml = sessionStorage.getItem('faq_bot_chat_html');
+                const isOpen = sessionStorage.getItem('faq_bot_is_open') === 'true';
+                
+                if (savedHtml) {
+                    chatContainer.innerHTML = savedHtml;
+                    requestAnimationFrame(() => {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    });
+                } else {
+                    // If no saved chat, show welcome message
+                    addMessage(welcomeMessage, 'bot');
+                }
+                
+                if (isOpen) {
+                    container.classList.add('open');
+                    iconOpen.style.display = 'none';
+                    iconClose.style.display = 'block';
+                }
+                
+                enableForm();
+            } catch (e) {
+                console.log('Could not restore session, showing welcome message');
+                addMessage(welcomeMessage, 'bot');
+                enableForm();
             }
-            if (isOpen) {
-                container.classList.add('open');
-                iconOpen.style.display = 'none';
-                iconClose.style.display = 'block';
-            }
-            enableForm();
         }
 
-        toggleButton.addEventListener('click', () => {
+        // Toggle button event listener
+        toggleButton.addEventListener('click', function() {
             container.classList.toggle('open');
             const isOpen = container.classList.contains('open');
             iconOpen.style.display = isOpen ? 'none' : 'block';
             iconClose.style.display = isOpen ? 'block' : 'none';
-            sessionStorage.setItem('faq_bot_is_open', isOpen);
+            
+            // Save open state
+            try {
+                sessionStorage.setItem('faq_bot_is_open', isOpen.toString());
+            } catch (e) {
+                console.log('Could not save open state');
+            }
         });
 
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
+        // Submit button click handler - ADD THIS
+        submitBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
             const query = queryInput.value.trim();
-            if (query) {
+            if (query && !queryInput.disabled) {
                 submitQuery(query);
                 queryInput.value = '';
-                queryInput.style.height = 'auto'; // Reset height after sending
+                queryInput.style.height = 'auto';
             }
+            return false;
+        });
+
+        // Form submit event listener - COMPLETELY REWRITTEN
+        chatForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const query = queryInput.value.trim();
+            if (query && !queryInput.disabled) {
+                submitQuery(query);
+                queryInput.value = '';
+                queryInput.style.height = 'auto';
+            }
+            return false;
         });
         
-        // --- JAVASCRIPT FIX IS HERE ---
-        // This makes the textarea auto-grow.
-        queryInput.addEventListener('input', () => {
-            queryInput.style.height = 'auto';
-            queryInput.style.height = `${queryInput.scrollHeight}px`;
+        // Auto-grow textarea functionality
+        queryInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
         });
         
-        // Prevents Enter from submitting the form, allowing for new lines.
-        queryInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+        // Handle Enter key - COMPLETELY REWRITTEN
+        queryInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Directly call the submit logic instead of dispatching events
+                const query = queryInput.value.trim();
+                if (query && !queryInput.disabled) {
+                    submitQuery(query);
+                    queryInput.value = '';
+                    queryInput.style.height = 'auto';
+                }
+                return false;
             }
         });
 
-
-        if (sessionStorage.getItem('faq_bot_initialized') === 'true') {
-            restoreSession();
-        } else {
-            initializeSession();
-        }
+        // Initialize the session
+        initializeSession();
     }
 
-    initializeChatbot();
+    // Prevent multiple initializations by checking if already initialized
+    if (window.faqBotInitialized) {
+        console.log('FAQ Bot already initialized, skipping...');
+        return;
+    }
+    window.faqBotInitialized = true;
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeChatbot);
+    } else {
+        initializeChatbot();
+    }
 })();
