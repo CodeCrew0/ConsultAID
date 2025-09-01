@@ -253,7 +253,9 @@
 
     // Step 3: Run the script with responsive enhancements
     function initializeChatbot() {
-        const API_BASE_URL = 'https://77b493b6d5b1.ngrok-free.app'; //'http://127.0.0.1:5001';
+        // Get API URL from script tag data attribute or use default
+        const scriptTag = document.querySelector('script[src*="chatbot.js"], script[data-api-url]');
+        const API_BASE_URL = scriptTag?.getAttribute('data-api-url') || 'http://127.0.0.1:5001';
         
         const container = document.getElementById('faq-bot-container');
         const toggleButton = document.getElementById('faq-bot-toggle-button');
@@ -279,8 +281,8 @@
         
         let welcomeMessage = `Hello! How can I help you?
 You can try asking one of these suggestions:
-- How can I apply?
-- Can you help me with my application?`;
+- What is the main topic?
+- Can you summarize the key points?`;
 
         // Enhanced responsive behavior
         function handleResponsiveAdjustments() {
