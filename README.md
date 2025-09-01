@@ -12,7 +12,7 @@ ConsultAID is a sophisticated, modular, and multilingual chatbot powered by a Re
   * [Getting Started](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#getting-started)
   * [Usage](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#usage)
   * [Front-end Integration](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#front-end-integration-chatbotjs)
-  * [API Endpoints](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#api-endpoints)
+  * [API Endpoints](https://github.com/CodeCrew0/ConsultAID/README.md#api-endpoints)
   * [Customization](https://github.com/CodeCrew0/ConsultAID/new/main?filename=README.md#-customization)
 
 ## Features
