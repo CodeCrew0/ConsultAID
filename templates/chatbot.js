@@ -1,13 +1,15 @@
-// chatbot.js
+// chatbot.js - Responsive Version
 
 (function() {
-    // Step 1: Define the complete HTML and CSS.
+    // Step 1: Define the complete HTML and CSS with responsive design.
     const chatbotUiHtml = `
     <div id="faq-bot-container">
         <style>
             #faq-bot-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
             #faq-bot-container * { box-sizing: border-box; }
             #faq-bot-toggle-button { background-color: #007bff; color: white; width: 60px; height: 60px; border-radius: 50%; border: none; font-size: 24px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s ease; display: flex; justify-content: center; align-items: center; }
+            
+            /* Desktop default styling */
             #faq-bot-container .chat-widget {
                 width: 400px;
                 max-height: 70vh;
@@ -25,6 +27,65 @@
                 pointer-events: none;
                 transition: opacity 0.3s ease, transform 0.3s ease;
             }
+            
+            /* Tablet styling */
+            @media screen and (max-width: 768px) {
+                #faq-bot-container .chat-widget {
+                    width: 350px;
+                    max-height: 60vh;
+                }
+                #faq-bot-container {
+                    bottom: 15px;
+                    right: 15px;
+                }
+            }
+            
+            /* Mobile styling */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container {
+                    bottom: 10px;
+                    right: 10px;
+                    left: 10px;
+                }
+                
+                #faq-bot-container .chat-widget {
+                    width: calc(100vw - 20px);
+                    max-width: none;
+                    max-height: 80vh;
+                    bottom: 80px;
+                    right: 0;
+                    left: 0;
+                    border-radius: 10px;
+                }
+                
+                #faq-bot-toggle-button {
+                    width: 50px;
+                    height: 50px;
+                    font-size: 20px;
+                }
+            }
+            
+            /* Extra small mobile devices */
+            @media screen and (max-width: 320px) {
+                #faq-bot-container .chat-widget {
+                    max-height: 85vh;
+                    border-radius: 8px;
+                }
+                
+                #faq-bot-toggle-button {
+                    width: 45px;
+                    height: 45px;
+                    font-size: 18px;
+                }
+            }
+            
+            /* Landscape orientation adjustments */
+            @media screen and (max-height: 500px) and (orientation: landscape) {
+                #faq-bot-container .chat-widget {
+                    max-height: 90vh;
+                }
+            }
+            
             #faq-bot-container.open .chat-widget { opacity: 1; transform: translateY(0); pointer-events: auto; }
             #faq-bot-container .header {
                 background: #007bff;
@@ -38,6 +99,15 @@
                 width: 100%;
                 z-index: 1;
             }
+            
+            /* Responsive header adjustments */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container .header {
+                    padding: 12px;
+                    font-size: 16px;
+                }
+            }
+            
             #faq-bot-container #chat-container {
                 flex: 1;
                 padding: 70px 20px 20px 20px;
@@ -46,7 +116,34 @@
                 display: flex;
                 flex-direction: column;
             }
-            #faq-bot-container .message { max-width: 85%; padding: 10px 15px; border-radius: 18px; margin-bottom: 10px; line-height: 1.4; word-wrap: break-word; }
+            
+            /* Responsive chat container padding */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container #chat-container {
+                    padding: 60px 15px 15px 15px;
+                }
+            }
+            
+            #faq-bot-container .message { 
+                max-width: 85%; 
+                padding: 10px 15px; 
+                border-radius: 18px; 
+                margin-bottom: 10px; 
+                line-height: 1.4; 
+                word-wrap: break-word;
+                font-size: 14px;
+            }
+            
+            /* Responsive message styling */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container .message {
+                    max-width: 90%;
+                    padding: 8px 12px;
+                    font-size: 14px;
+                    border-radius: 15px;
+                }
+            }
+            
             #faq-bot-container .user-message { background-color: #007bff; color: white; align-self: flex-end; }
             #faq-bot-container .bot-message { background-color: #e9e9eb; color: #333; align-self: flex-start; white-space: pre-wrap; }
             #faq-bot-container #form-container {
@@ -55,6 +152,13 @@
                 border-top: 1px solid #eee;
                 background: #fff;
                 align-items: flex-end;
+            }
+            
+            /* Responsive form container */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container #form-container {
+                    padding: 8px;
+                }
             }
             
             #faq-bot-container #query-input {
@@ -72,10 +176,52 @@
                 min-height: 40px;
                 width: 20vw;
             }
+            
+            /* Responsive input field */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container #query-input {
+                    padding: 8px 12px;
+                    font-size: 16px; /* Prevents zoom on iOS */
+                    border-radius: 18px;
+                    margin-right: 8px;
+                    max-height: 80px;
+                    min-height: 36px;
+                }
+            }
 
             #faq-bot-container #query-input:disabled { background-color: #f5f5f5; cursor: not-allowed; }
-            #faq-bot-container #submit-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #007bff; padding: 5px; min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+            #faq-bot-container #submit-btn { 
+                background: none; 
+                border: none; 
+                font-size: 20px; 
+                cursor: pointer; 
+                color: #007bff; 
+                padding: 5px; 
+                min-width: 30px; 
+                height: 30px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+            }
+            
+            /* Responsive submit button */
+            @media screen and (max-width: 480px) {
+                #faq-bot-container #submit-btn {
+                    font-size: 18px;
+                    min-width: 28px;
+                    height: 28px;
+                    padding: 4px;
+                }
+            }
+            
             #faq-bot-container #submit-btn:disabled { color: #aaa; cursor: not-allowed; }
+            
+            /* High DPI display adjustments */
+            @media screen and (min-resolution: 2dppx) {
+                #faq-bot-container .chat-widget {
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+                }
+            }
         </style>
         
         <div class="chat-widget">
@@ -105,7 +251,7 @@
     // Step 2: Inject the UI.
     document.body.insertAdjacentHTML('beforeend', chatbotUiHtml);
 
-    // Step 3: Run the script.
+    // Step 3: Run the script with responsive enhancements
     function initializeChatbot() {
         const API_BASE_URL = 'https://77b493b6d5b1.ngrok-free.app'; //'http://127.0.0.1:5001';
         
@@ -131,11 +277,40 @@
             session_id = 'sess_' + Date.now().toString(36) + Math.random().toString(36).substr(2);
         }
         
-        // let session_id;
         let welcomeMessage = `Hello! How can I help you?
 You can try asking one of these suggestions:
 - What is the main topic?
 - Can you summarize the key points?`;
+
+        // Enhanced responsive behavior
+        function handleResponsiveAdjustments() {
+            const isMobile = window.innerWidth <= 480;
+            const isTablet = window.innerWidth <= 768 && window.innerWidth > 480;
+            
+            // Adjust scroll behavior for mobile
+            if (isMobile) {
+                // Prevent background scrolling when chat is open
+                if (container.classList.contains('open')) {
+                    document.body.style.overflow = 'hidden';
+                } else {
+                    document.body.style.overflow = '';
+                }
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+
+        // Listen for resize events
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(handleResponsiveAdjustments, 100);
+        });
+
+        // Listen for orientation changes
+        window.addEventListener('orientationchange', function() {
+            setTimeout(handleResponsiveAdjustments, 500); // Delay to allow orientation to settle
+        });
 
         function addMessage(text, sender) {
             const messageDiv = document.createElement('div');
@@ -169,7 +344,7 @@ You can try asking one of these suggestions:
             const loadingMessage = document.createElement('div');
             loadingMessage.classList.add('message', 'bot-message');
             loadingMessage.textContent = "Thinking...";
-            loadingMessage.id = 'loading-message-' + Date.now(); // Unique ID
+            loadingMessage.id = 'loading-message-' + Date.now();
             chatContainer.appendChild(loadingMessage);
             
             // Scroll to bottom
@@ -319,6 +494,7 @@ You can try asking one of these suggestions:
                     container.classList.add('open');
                     iconOpen.style.display = 'none';
                     iconClose.style.display = 'block';
+                    handleResponsiveAdjustments(); // Apply responsive adjustments
                 }
                 
                 enableForm();
@@ -329,12 +505,15 @@ You can try asking one of these suggestions:
             }
         }
 
-        // Toggle button event listener
+        // Toggle button event listener with responsive enhancements
         toggleButton.addEventListener('click', function() {
             container.classList.toggle('open');
             const isOpen = container.classList.contains('open');
             iconOpen.style.display = isOpen ? 'none' : 'block';
             iconClose.style.display = isOpen ? 'block' : 'none';
+            
+            // Apply responsive adjustments
+            handleResponsiveAdjustments();
             
             // Save open state
             try {
@@ -342,9 +521,16 @@ You can try asking one of these suggestions:
             } catch (e) {
                 console.log('Could not save open state');
             }
+            
+            // Focus input on mobile when opening
+            if (isOpen && window.innerWidth <= 480) {
+                setTimeout(() => {
+                    queryInput.focus();
+                }, 300); // Delay to allow animation to complete
+            }
         });
 
-        // Submit button click handler - ADD THIS
+        // Submit button click handler
         submitBtn.addEventListener('click', function(event) {
             event.preventDefault();
             event.stopPropagation();
@@ -358,7 +544,7 @@ You can try asking one of these suggestions:
             return false;
         });
 
-        // Form submit event listener - COMPLETELY REWRITTEN
+        // Form submit event listener
         chatForm.addEventListener('submit', function(event) {
             event.preventDefault();
             event.stopPropagation();
@@ -372,13 +558,14 @@ You can try asking one of these suggestions:
             return false;
         });
         
-        // Auto-grow textarea functionality
+        // Auto-grow textarea functionality with mobile optimizations
         queryInput.addEventListener('input', function() {
             this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            const maxHeight = window.innerWidth <= 480 ? 80 : 100;
+            this.style.height = Math.min(this.scrollHeight, maxHeight) + 'px';
         });
         
-        // Handle Enter key - COMPLETELY REWRITTEN
+        // Handle Enter key
         queryInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -394,6 +581,9 @@ You can try asking one of these suggestions:
                 return false;
             }
         });
+
+        // Initialize responsive adjustments
+        handleResponsiveAdjustments();
 
         // Initialize the session
         initializeSession();
