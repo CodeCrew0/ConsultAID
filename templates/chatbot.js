@@ -279,8 +279,8 @@
         
         let welcomeMessage = `Hello! How can I help you?
 You can try asking one of these suggestions:
-- What is the main topic?
-- Can you summarize the key points?`;
+- How can I apply?
+- Can you help me with my application?`;
 
         // Enhanced responsive behavior
         function handleResponsiveAdjustments() {
