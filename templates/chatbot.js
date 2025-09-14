@@ -236,7 +236,7 @@
         </div>
 
         <button id="faq-bot-toggle-button" aria-label="Toggle Chat">
-            <span class="icon-open">?</span>
+            <span class="icon-open">🤖</span>
             <span class="icon-close" style="display:none;">✕</span>
         </button>
     </div>

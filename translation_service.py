@@ -1,12 +1,9 @@
 # translation_service.py
 
-from langdetect import detect, DetectorFactory
+import py3langid as langid
 from googletrans import Translator
 import logging
 import time
-
-# Set seed for consistent language detection
-DetectorFactory.seed = 0
 
 class TranslationService:
     def __init__(self):
@@ -15,8 +12,11 @@ class TranslationService:
         self.cache = {}  # Simple cache to avoid repeated translations
         self.rate_limit_delay = 0.1  # Small delay between requests
         
+        # Configure langid (optional: you can set specific languages if needed)
+        # langid.set_languages(['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko', 'ar', 'hi'])
+        
     def detect_language(self, text):
-        """Detect the language of the input text"""
+        """Detect the language of the input text using langid with improvements for short text"""
         try:
             if not text or not text.strip():
                 return 'en'
@@ -25,9 +25,37 @@ class TranslationService:
             clean_text = text.strip()
             if len(clean_text) < 3:
                 return 'en'  # Default to English for very short text
-                
-            detected_lang = detect(clean_text)
-            self.logger.info(f"Detected language: {detected_lang} for text: {clean_text[:50]}...")
+            
+            # Common English words that langid often misclassifies
+            common_english_words = {
+                'hello', 'hi', 'hey', 'thanks', 'thank', 'you', 'yes', 'no', 
+                'please', 'sorry', 'ok', 'okay', 'bye', 'goodbye', 'help',
+                'what', 'when', 'where', 'why', 'how', 'who', 'can', 'will',
+                'the', 'and', 'or', 'but', 'for', 'with', 'this', 'that'
+            }
+            
+            # Check if it's a short common English word/phrase
+            words = clean_text.lower().split()
+            if len(words) <= 2 and all(word.strip('.,!?') in common_english_words for word in words):
+                self.logger.info(f"Detected common English word/phrase: {clean_text[:50]}")
+                return 'en'
+            
+            # Use langid to detect language
+            detected_lang, confidence = langid.classify(clean_text)
+            
+            # Log the detection result with confidence score
+            self.logger.info(f"Detected language: {detected_lang} (confidence: {confidence:.3f}) for text: {clean_text[:50]}...")
+            
+            # Apply confidence threshold and length-based corrections
+            if confidence < 0.8 and len(clean_text) < 20:
+                # For short text with low confidence, default to English
+                self.logger.info(f"Short text with low confidence, defaulting to English")
+                return 'en'
+            elif confidence < 0.6:
+                # For any text with very low confidence, default to English
+                self.logger.info(f"Very low confidence detection, defaulting to English")
+                return 'en'
+            
             return detected_lang
             
         except Exception as e:
